@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -210,7 +210,7 @@ class TC_GAME_API CreatureAI : public UnitAI
         virtual void OnQuestReward(Player* /*player*/, Quest const* /*quest*/, LootItemType /*type*/, uint32 /*opt*/) { }
 
         /// == Waypoints system =============================
-
+        // 能进行移植吗？
         virtual void WaypointStarted(uint32 /*nodeId*/, uint32 /*pathId*/) { }
         virtual void WaypointReached(uint32 /*nodeId*/, uint32 /*pathId*/) { }
         virtual void WaypointPathEnded(uint32 /*nodeId*/, uint32 /*pathId*/) { }

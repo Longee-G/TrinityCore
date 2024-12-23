@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
 #include "ObjectAccessor.h"
 #include "Unit.h"
 
+// _pointId 是什么呢？
+// 有可能是Path上的某个关键点。
 GenericMovementGenerator::GenericMovementGenerator(std::function<void(Movement::MoveSplineInit& init)>&& initializer, MovementGeneratorType type, uint32 id,
     GenericMovementGeneratorArgs&& args)
     : _splineInit(std::move(initializer)), _type(type), _pointId(id), _durationTracksSpline(true), _arrivalSpellId(0)
@@ -96,7 +98,9 @@ void GenericMovementGenerator::Finalize(Unit* owner, bool/* active*/, bool movem
     if (movementInform && HasFlag(MOVEMENTGENERATOR_FLAG_INFORM_ENABLED))
         MovementInform(owner);
 }
-
+// 运动通知... 什么情况下会调用呢？ _pointId 和 _type 的组合代表什么呢？
+// 当路径到达了Path中的某个点的时候，会调用这个函数进行通知...
+//
 void GenericMovementGenerator::MovementInform(Unit* owner)
 {
     if (_arrivalSpellId)
@@ -106,6 +110,9 @@ void GenericMovementGenerator::MovementInform(Unit* owner)
 
     if (Creature* creature = owner->ToCreature())
     {
+        // 通知给AI，这个时候到达了Path上的某个点。
+        // 问题在于，怎么知道这个是哪个Path上的点呢？
+
         if (creature->AI())
             creature->AI()->MovementInform(_type, _pointId);
     }

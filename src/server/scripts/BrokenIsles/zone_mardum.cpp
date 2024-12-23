@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -56,35 +56,60 @@ enum MardumSoundData
     SOUND_SPELL_DOUBLE_JUMP     = 53780,
 };
 
-class scene_demonhunter_intro : public SceneScript
-{
-public:
-    scene_demonhunter_intro() : SceneScript("scene_demonhunter_intro") { }
-
-    void OnSceneStart(Player* player, uint32 /*sceneInstanceID*/, SceneTemplate const* /*sceneTemplate*/) override
-    {
-        Conversation::CreateConversation(CONVO_DEMONHUNTER_INTRO_START, player, *player, player->GetGUID(), nullptr);
-    }
-
-    void OnSceneComplete(Player* player, uint32 /*sceneInstanceID*/, SceneTemplate const* /*sceneTemplate*/) override
-    {
-        PhasingHandler::OnConditionChange(player);
-    }
-};
-
-// 196030 - Start: Quest Invis
+// 196030 - Start Quest Invis           意思是以隐身的方式开启任务...
+// 
+// 196030 是一个aura，但是这个spell 存在于Legion版本...
+// 
+// Q:这个spell是谁施放的？
+// A: 定义在`playercreateinfo_cast_spell` 表中的，角色创建的时候，会通过这个表来自动施放设置的spell...
+//
+//
+// 这个脚本是怎么被触发的呢？ --  这个应该是被简化过了，class name应该是等同于scriptName
+// 然后通过scriptname来关联到这个class上...
 class spell_demon_hunter_intro_aura : public AuraScript
 {
     void AfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
     {
+        // 召唤出starting quest 的npc--凯恩·日怒
+
         GetTarget()->CastSpell(nullptr, SPELL_START_DEMON_HUNTER_PLAY_SCENE, true);
     }
 
     void Register() override
     {
+        // 注册了当aura被移除的回调
+        // Q: 那么这个aura是什么时候被移除的呢？是aura有自己duration，还是由代码主动移除的呢？
+        // A: 假设这个aura在1.5s后会自动被移除 ...
         AfterEffectRemove += AuraEffectRemoveFn(spell_demon_hunter_intro_aura::AfterRemove, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
     }
 };
+
+
+// 关联在Kayn带队进入营地的场景动画...
+class scene_demonhunter_intro : public SceneScript
+{
+public:
+    // 这个脚本是关联在什么上的？ `scene_template` sceneId=1106
+    // sceneId 定义在什么地方？ 定义在表`scene_template`中，用来关联sceneScriptpackageId
+    // 关联的 pkgId=1487 ... 场景 -- 凯恩带队冲出来... 
+    scene_demonhunter_intro() : SceneScript("scene_demonhunter_intro") { }
+
+    void OnSceneStart(Player* player, uint32 /*sceneInstanceID*/, SceneTemplate const* /*sceneTemplate*/) override
+    {
+        // `conversation_template` 从db中配置数据...
+        // 伊利丹，会出现并开始讲话... "Sageras's keystone is the crux of my plan to defeat...
+        Conversation::CreateConversation(CONVO_DEMONHUNTER_INTRO_START, player, *player, player->GetGUID(), nullptr);
+    }
+
+    void OnSceneComplete(Player* player, uint32 /*sceneInstanceID*/, SceneTemplate const* /*sceneTemplate*/) override
+    {
+        // Q: 这个条件改变会触发什么呢？
+        // A: 可能会触发 OnPhaseChange.. 相位的改变会导致关联相位的npc发生变化
+        //   还会导致某些和Phase关联的Aura被移除 ... 就是说新的代码通过配置Aura的某些特性来通过phase的改变移除aura？
+        PhasingHandler::OnConditionChange(player);
+    }
+};
+
 
 enum TheInvasionBeginsQuestData
 {
@@ -98,20 +123,24 @@ enum TheInvasionBeginsQuestData
     NPC_CYANA_NIGHTGLAIVE_INVASION_BEGINS       = 98290,
     NPC_KORVAS_BLOODTHORN_INVASION_BEGINS       = 98292,
     NPC_SEVIS_BRIGHTFLAME_INVASION_BEGINS       = 99918,
+
     NPC_WRATH_WARRIOR_INVASION_BEGINS           = 94580,
 
     SPELL_THE_INVASION_BEGINS                   = 187382,
     SPELL_TRACK_TARGET_IN_CHANNEL               = 175799,
-    SPELL_DEMON_HUNTER_GLIDE_STATE              = 199303
+    SPELL_DEMON_HUNTER_GLIDE_STATE              = 199303        // 恶魔猎手滑翔状态
 };
 
 enum TheInvasionsBeginsWaypointData
 {
+    // pathId的命名规则以creatureEntry * 100 + n
+
     // Kayn
-    PATH_KAYN_ATTACK_DEMON                      = 9301100,
-    PATH_KAYN_AFTER_DEMON                       = 9301101,
+    PATH_KAYN_ATTACK_DEMON                      = 9301100,      // 这个path应该是从开始区域向绝望岭移动，终点是在绝望岭遇见demon的地方...
+    PATH_KAYN_AFTER_DEMON                       = 9301101,      
 
     // Path before Jump
+    // 这组路径应该是在营地（开始区域）和绝望岭之间的沟前的寻路
     PATH_JAYCE_INVASION_BEGINS                  = 9822800,
     PATH_ALLARI_INVASION_BEGINS                 = 9822700,
     PATH_CYANA_INVASION_BEGINS                  = 9829000,
@@ -119,22 +148,23 @@ enum TheInvasionsBeginsWaypointData
     PATH_SEVIS_INVASION_BEGINS                  = 9991800,
 
     // Path after Jump
+    // 进入绝望岭后的寻路...
     PATH_JAYCE_JUMP_INVASION_BEGINS             = 9822801,
     PATH_ALLARI_JUMP_INVASION_BEGINS            = 9822701,
     PATH_CYANA_JUMP_INVASION_BEGINS             = 9829001,
     PATH_KORVAS_JUMP_INVASION_BEGINS            = 9829201,
     PATH_SEVIS_JUMP_INVASION_BEGINS             = 9991801,
 
-    POINT_ILLIDARI_LAND_POS                     = 1,
-    POINT_KAYN_TRIGGER_DOUBLE_JUMP              = 2,
-    POINT_KAYN_MOVE_TO_DEMON                    = 3,
+    POINT_ILLIDARI_LAND_POS                     = 1,            // 接开始任务的地方
+    POINT_KAYN_TRIGGER_DOUBLE_JUMP              = 2,            // 触发kayn的二段跳
+    POINT_KAYN_MOVE_TO_DEMON                    = 3,            // kayn开始移动
 };
 
 enum TheInvasionBeginsAnimKitsData
 {
-    ANIM_DH_WINGS                               = 58110,
-    ANIM_DH_RUN                                 = 9767,
-    ANIM_DH_RUN_ALLARI                          = 9180,
+    ANIM_DH_WINGS                               = 58110,        // 展翅
+    ANIM_DH_RUN                                 = 9767,         
+    ANIM_DH_RUN_ALLARI                          = 9180,         // DH 的跑步动作？
 };
 
 enum TheInvasionBeginsVisualData
@@ -147,58 +177,103 @@ enum TheInvasionBeginsVisualData
 };
 
 Position const WrathWarriorSpawnPosition        = { 1081.9166f, 3183.8716f, 26.335993f };
-Position const KaynJumpPos                      = { 1172.17f, 3202.55f, 54.3479f };
-Position const KaynDoubleJumpPosition           = { 1094.2384f, 3186.058f, 28.81562f };
-Position const JayceJumpPos                     = { 1119.24f, 3203.42f, 38.1061f };
-Position const AllariJumpPos                    = { 1120.08f, 3197.2f, 36.8502f };
-Position const KorvasJumpPos                    = { 1117.89f, 3196.24f, 36.2158f };
-Position const SevisJumpPos                     = { 1120.74f, 3199.47f, 37.5157f };
-Position const CyanaJumpPos                     = { 1120.34f, 3194.28f, 36.4321f };
+Position const KaynDoubleJumpPosition = { 1094.2384f, 3186.058f, 28.81562f };   // 剧情对话的跳到空中的位置
+
+
+// 以下的几个位置都在刚进绝望岭的位置...
+
+Position const KaynJumpPos = { 1172.17f, 3202.55f, 54.3479f };         // 接第1个任务的位置？ 好像不是
+Position const JayceJumpPos                     = { 1119.24f, 3203.42f, 38.1061f }; // 刚跳过沟
+Position const AllariJumpPos                    = { 1120.08f, 3197.2f, 36.8502f };// 刚跳过沟
+Position const KorvasJumpPos                    = { 1117.89f, 3196.24f, 36.2158f };// 刚跳过沟
+Position const SevisJumpPos                     = { 1120.74f, 3199.47f, 37.5157f };// 刚跳过沟
+Position const CyanaJumpPos                     = { 1120.34f, 3194.28f, 36.4321f };// 刚跳过沟
+
+// 总共6个npc，都使用脚本进行控制了...
+
+// Q: 在什么地方让Kayn开始跑进绝望岭的？ ...
+// A: 感觉正确的应该是这样的
+// - Kayn率队从开始区域开始跑向绝望岭，在开始区域和绝望岭间的沟之前进行第1跳，跳过沟，进入绝望岭
+// - 在进入绝望岭的某个位置进行第2次跳...
+//
+
+
 
 // 93011 - Kayn Sunfury
 struct npc_kayn_sunfury_invasion_begins : public ScriptedAI
 {
     npc_kayn_sunfury_invasion_begins(Creature* creature) : ScriptedAI(creature) { }
 
+
     void OnQuestAccept(Player* player, Quest const* quest) override
     {
         if (quest->GetQuestId() == QUEST_THE_INVASION_BEGINS)
         {
             PhasingHandler::OnConditionChange(player);
+
+            // 这个spell召唤出 `愤怒战士`:94580 ，进攻开始召唤愤怒战士
+            // 
+            // 
             player->CastSpell(WrathWarriorSpawnPosition, SPELL_THE_INVASION_BEGINS, false);
+
+            // 创建一个对话，不让它自动开始
+            // 922 对话 Legion版本没有完整的数据 ...
+            // 应该是创建一个和 `愤怒战士` 的对话 ...
+            // 
+            // Kayn的movePath是在对话脚本中启动的吗？
             Conversation::CreateConversation(CONVO_THE_INVASION_BEGINS, player, *player, player->GetGUID(), nullptr, false);
         }
     }
 
+    // 当Kayn寻路完成..
+    // 本来想移植到AshamaneCore的，WP好像不同了，不好移植，暂时放弃
     void WaypointPathEnded(uint32 /*nodeId*/, uint32 pathId) override
     {
-        if (pathId == PATH_KAYN_ATTACK_DEMON)
-        {
+        // pathId 是定义在`waypoint_data`表中的
+
+        if (pathId == PATH_KAYN_ATTACK_DEMON)   // Kayn什么时候开始进行这个Path移动？
+        { // 当Kayn移动到什么地方？
+
+            // Kayn已经移动到第1个path的终点
+
+
             Creature* wrathWarrior = me->FindNearestCreatureWithOptions(100.0f, { .CreatureId = NPC_WRATH_WARRIOR_INVASION_BEGINS, .IgnorePhases = true, .OwnerGuid = me->GetOwnerGUID() });
             if (!wrathWarrior)
                 return;
-
+            // 让Kayn面向 wrathWarrior
             me->SetFacingToObject(wrathWarrior);
 
             wrathWarrior->SendPlaySpellVisualKit(SPELL_VISUAL_KIT_WRATH_WARRIOR_DIE, 0, 0);
             wrathWarrior->KillSelf();
 
+            // Kayn移动到下一个位置...
+            // 
             _scheduler.Schedule(600ms, [this](TaskContext /*context*/)
             {
-                me->GetMotionMaster()->MovePath(PATH_KAYN_AFTER_DEMON, false);
+                me->GetMotionMaster()->MovePath(PATH_KAYN_AFTER_DEMON, false);  
             });
         }
         else if (pathId == PATH_KAYN_AFTER_DEMON)
-            me->DespawnOrUnsummon();
+            me->DespawnOrUnsummon();    // Kayn消失...
     }
 
+    
+    // 在运动结束的时候，调用这个函数通知AI？
+    // 当某个移动结束的时候...
+    // 那pointId 指什么呢？ ==  大概是Path中的某个点的索引 ..
+    //   好像不是和路径有关 ...
+    // 这个函数应该是到底Path中的某个点的时候触发的.. 可以如果有多个路径怎么知道是哪个路径中的点？
+    // 而 WaypointPathEnded 是当整个Path完成的时候触发的... 
     void MovementInform(uint32 type, uint32 pointId) override
     {
         if (type != EFFECT_MOTION_TYPE)
             return;
 
         if (pointId == POINT_KAYN_TRIGGER_DOUBLE_JUMP)
-        {
+        {   // 触发双跳的位置好像是进了`绝望岭` 移动到第2个点？
+            // 移动到沟前，然后进行DH的二段跳+滑翔跳过沟进入绝望岭
+
+
             TempSummon* summon = me->ToTempSummon();
             if (!summon)
                 return;
@@ -209,13 +284,20 @@ struct npc_kayn_sunfury_invasion_begins : public ScriptedAI
             if (!summonerPlayer)
                 return;
 
-            me->SendPlaySpellVisualKit(SPELL_VISUAL_KIT_KAYN_WINGS, 4, 3000);
+            // 这个是啥玩意？ 播放法术的效果吗？ 
+            me->SendPlaySpellVisualKit(SPELL_VISUAL_KIT_KAYN_WINGS, 4, 3000);   // DH 展翅
+
             me->PlayObjectSound(SOUND_SPELL_DOUBLE_JUMP, me->GetGUID(), summonerPlayer);
-            me->SendPlaySpellVisualKit(SPELL_VISUAL_KIT_KAYN_DOUBLE_JUMP, 0, 0);
+
+            me->SendPlaySpellVisualKit(SPELL_VISUAL_KIT_KAYN_DOUBLE_JUMP, 0, 0); // DH 二段跳动作
+
+            // 跳进绝望岭...
             me->GetMotionMaster()->MoveJumpWithGravity(KaynDoubleJumpPosition, 24.0, 0.9874f, POINT_KAYN_MOVE_TO_DEMON);
+            
+
         }
         else if (pointId == POINT_KAYN_MOVE_TO_DEMON)
-        {
+        {   // 移动的路径的第3个点后，就开始变动作？ 然后开始 进行攻击恶魔的路径？
             me->SetAIAnimKitId(ANIM_DH_RUN);
             me->GetMotionMaster()->MovePath(PATH_KAYN_ATTACK_DEMON, false);
         }
@@ -230,6 +312,8 @@ private:
     TaskScheduler _scheduler;
 };
 
+// 开始任务的这队npc，每一个npc都单独使用脚本进行空中 ..
+
 // 98228 - Jayce Darkweaver
 struct npc_jayce_darkweaver_invasion_begins : public ScriptedAI
 {
@@ -239,11 +323,15 @@ struct npc_jayce_darkweaver_invasion_begins : public ScriptedAI
     {
         if (pathId == PATH_JAYCE_INVASION_BEGINS)
         {
+            // 完成了第1段路径，从接任务的地方到进入怪区的沟前面
+
             me->CastSpell(nullptr, SPELL_DEMON_HUNTER_GLIDE_STATE, true);
+
+            // 跳到沟的对面...
             me->GetMotionMaster()->MoveJumpWithGravity(JayceJumpPos, 12.0f, 15.2792f, POINT_ILLIDARI_LAND_POS);
         }
         else if (pathId == PATH_JAYCE_JUMP_INVASION_BEGINS)
-            me->DespawnOrUnsummon();
+            me->DespawnOrUnsummon();    // 完成第2段路径后，npc消失，这个时候进入怪区了
     }
 
     void MovementInform(uint32 type, uint32 pointId) override
@@ -376,6 +464,8 @@ struct npc_cyana_nightglaive_invasion_begins : public ScriptedAI
 };
 
 // 922 - The Invasion Begins
+// 这个脚本是触发于接了第1个任务之后打开的npc对话...
+
 class conversation_the_invasion_begins : public ConversationScript
 {
 public:
@@ -407,6 +497,9 @@ public:
         if (!kaynObject || !jayceObject || !allariaObject || !cyanaObject || !korvasObject || !sevisObject)
             return;
 
+        // 创建一组临时的npc...克隆了kayn小队...
+        // 那这样不是出现了两个同样的npc？
+
         TempSummon* kaynClone = kaynObject->SummonPersonalClone(kaynObject->GetPosition(), TEMPSUMMON_MANUAL_DESPAWN, 0s, 0, 0, creator->ToPlayer());
         TempSummon* jayceClone = jayceObject->SummonPersonalClone(jayceObject->GetPosition(), TEMPSUMMON_MANUAL_DESPAWN, 0s, 0, 0, creator->ToPlayer());
         TempSummon* allariaClone = allariaObject->SummonPersonalClone(allariaObject->GetPosition(), TEMPSUMMON_MANUAL_DESPAWN, 0s, 0, 0, creator->ToPlayer());
@@ -421,24 +514,29 @@ public:
         _cyanaGUID = cyanaClone->GetGUID();
         _sevisGUID = sevisClone->GetGUID();
         allariaClone->SetAIAnimKitId(ANIM_DH_RUN_ALLARI);
+        // 移除npc标记，让这个npc不能交互，否则在npc移动的过程中会被玩家的交互打断路径
         kaynClone->RemoveNpcFlag(NPCFlags(UNIT_NPC_FLAG_GOSSIP | UNIT_NPC_FLAG_QUESTGIVER));
 
+
+        // 这个估计就是使用新的方式来播放kayn和korvas的喊话...
         conversation->AddActor(CONVO_THE_INVASION_BEGINS, CONVO_ACTOR_IDX_KAYN, kaynClone->GetGUID());
         conversation->AddActor(CONVO_THE_INVASION_BEGINS, CONVO_ACTOR_IDX_KORVAS, korvasClone->GetGUID());
         conversation->Start();
     }
 
+    // 对话开始...
     void OnConversationStart(Conversation* conversation) override
     {
         LocaleConstant privateOwnerLocale = conversation->GetPrivateObjectOwnerLocale();
 
         if (Milliseconds const* illidariFacingLineStarted = conversation->GetLineStartTime(privateOwnerLocale, CONVO_LINE_TRIGGER_FACING))
-            _events.ScheduleEvent(EVENT_ILLIDARI_FACE_PLAYERS, *illidariFacingLineStarted);
+            _events.ScheduleEvent(EVENT_ILLIDARI_FACE_PLAYERS, *illidariFacingLineStarted); // 
 
         if (Milliseconds const* illidariStartPathLineStarted = conversation->GetLineStartTime(privateOwnerLocale, CONVO_LINE_START_PATH))
-            _events.ScheduleEvent(EVENT_ILLIDARI_START_PATH, *illidariStartPathLineStarted);
+            _events.ScheduleEvent(EVENT_ILLIDARI_START_PATH, *illidariStartPathLineStarted);   
     }
 
+    // Channel指的是什么呢？
     static void StartCloneChannel(ObjectGuid guid, Conversation* conversation)
     {
         Unit* privateObjectOwner = ObjectAccessor::GetUnit(*conversation, conversation->GetPrivateObjectOwner());
@@ -448,10 +546,11 @@ public:
         Creature* clone = ObjectAccessor::GetCreature(*conversation, guid);
         if (!clone)
             return;
-
+        // 175799 spell是什么？LEGION 版本没有...
         clone->CastSpell(privateObjectOwner, SPELL_TRACK_TARGET_IN_CHANNEL, false);
     }
 
+    // 开始让clone出来的Kayn小队移动？
     static void StartCloneMovement(ObjectGuid cloneGUID, uint32 pathId, uint32 animKit, Conversation* conversation)
     {
         Creature* clone = ObjectAccessor::GetCreature(*conversation, cloneGUID);
@@ -461,7 +560,7 @@ public:
         clone->InterruptNonMeleeSpells(true);
         clone->GetMotionMaster()->MovePath(pathId, false);
         if (animKit)
-            clone->SetAIAnimKitId(animKit);
+            clone->SetAIAnimKitId(animKit); // 设置动画动作
     }
 
     void OnConversationUpdate(Conversation* conversation, uint32 diff) override
@@ -472,6 +571,7 @@ public:
         {
             case EVENT_ILLIDARI_FACE_PLAYERS:
             {
+                // 这个命名奇怪，应该是clone一队npc出来... 6 个npc都clone
                 StartCloneChannel(conversation->GetActorUnit(CONVO_ACTOR_IDX_KAYN)->GetGUID(), conversation);
                 StartCloneChannel(conversation->GetActorUnit(CONVO_ACTOR_IDX_KORVAS)->GetGUID(), conversation);
                 StartCloneChannel(_jayceGUID, conversation);
@@ -480,7 +580,7 @@ public:
                 StartCloneChannel(_sevisGUID, conversation);
                 break;
             }
-            case EVENT_ILLIDARI_START_PATH:
+            case EVENT_ILLIDARI_START_PATH: // 接完任务后，Kayn说完话之后，开始率队进入绝望岭
             {
                 Creature* kaynClone = conversation->GetActorCreature(CONVO_ACTOR_IDX_KAYN);
                 if (!kaynClone)
@@ -494,12 +594,23 @@ public:
                 if (!player)
                     return;
 
+                // 播放声音 。。。 播放武器出鞘的声音？
+
                 kaynClone->PlayObjectSound(SOUND_METAL_WEAPON_UNSHEATH, kaynClone->GetGUID(), player);
-                kaynClone->SendPlaySpellVisualKit(SPELL_VISUAL_KIT_KAYN_GLIDE, 4, 3000);
-                kaynClone->SendPlaySpellVisualKit(SPELL_VISUAL_KIT_KAYN_WINGS, 4, 4000);
+
+                kaynClone->SendPlaySpellVisualKit(SPELL_VISUAL_KIT_KAYN_GLIDE, 4, 3000);    // 播放滑行的动作
+                kaynClone->SendPlaySpellVisualKit(SPELL_VISUAL_KIT_KAYN_WINGS, 4, 4000);    // 播放展翅的动作 ..
+                
+                // kayn 跳到空中，然后滑翔到沟前？
                 kaynClone->GetMotionMaster()->MoveJumpWithGravity(KaynJumpPos, 20.5f, 396.3535f, POINT_KAYN_TRIGGER_DOUBLE_JUMP);
-                kaynClone->SetSheath(SHEATH_STATE_MELEE);
+
+
+                kaynClone->SetSheath(SHEATH_STATE_MELEE);   // 啥意思？ 武器入鞘？
                 kaynClone->SetNpcFlag(UNIT_NPC_FLAG_QUESTGIVER);
+
+
+                // 只有其他5个npc移动吗？ kayn不移动？
+
 
                 StartCloneMovement(conversation->GetActorUnit(CONVO_ACTOR_IDX_KORVAS)->GetGUID(), PATH_KORVAS_INVASION_BEGINS, ANIM_DH_RUN, conversation);
                 StartCloneMovement(_jayceGUID, PATH_JAYCE_INVASION_BEGINS, 0, conversation);
@@ -520,6 +631,10 @@ private:
     ObjectGuid _sevisGUID;
     EventMap _events;
 };
+
+
+// 战场中的npc ... 这个脚本是绑到哪个npc？
+// 应该是战场中的npc的战斗脚本... 从周围选定敌人进行攻击
 
 // 98459 - Kayn Sunfury
 // 98458 - Jayce Darkweaver
@@ -580,12 +695,14 @@ struct npc_illidari_fighting_invasion_begins : public ScriptedAI
         _events.Reset();
     }
 
+    // 刚和目标接触？ 新的接口...
     void JustEngagedWith(Unit* /*who*/) override
     {
-        _events.ScheduleEvent(EVENT_CHAOS_STRIKE, 5s);
-        _events.ScheduleEvent(EVENT_FEL_RUSH, 7s);
+        _events.ScheduleEvent(EVENT_CHAOS_STRIKE, 5s);  // 使用dh的混乱打击技能
+        _events.ScheduleEvent(EVENT_FEL_RUSH, 7s);  // 邪能冲撞
     }
 
+    // 规避模式？ 啥意思 ... 脱战后贤者模式？
     void EnterEvadeMode(EvadeReason why) override
     {
         // manualling calling it to not move to home position but move to next target instead
@@ -758,6 +875,7 @@ CreatureAI* KaynSunfuryNearLegionBannerAISelector(Creature* creature)
 };
 
 // 1053 - Enter the Illidari: Ashtongue
+// 
 class scene_enter_the_illidari_ashtongue : public SceneScript
 {
 public:
@@ -828,6 +946,7 @@ CreatureAI* SevisBrightflameAshtongueGatewayAISelector(Creature* creature)
 };
 
 // 200255 - Accepting Felsaber Gift
+// 获取DH坐骑
 class spell_accepting_felsaber_gift : public SpellScript
 {
     void HandleHitTarget(SpellEffIndex /*effIndex*/)
@@ -842,6 +961,9 @@ class spell_accepting_felsaber_gift : public SpellScript
 };
 
 // 32 - Mardum - Trigger KillCredit for Quest "Enter the Illidari: Ashtongue"
+
+// 使用的是AreaTrigger来完成任务的最后一个目标：`找到阿莱利`..
+
 struct at_enter_the_illidari_ashtongue_allari_killcredit : AreaTriggerAI
 {
     at_enter_the_illidari_ashtongue_allari_killcredit(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
@@ -1369,6 +1491,8 @@ CreatureAI* MannethrelDarkstarFreedAISelector(Creature* creature)
 template<uint32 CreatureId>
 class spell_freed_killcredit_set_them_free : public SpellScript
 {
+    // 处理从笼子里解救出NPC...
+
     void HandleHitTarget(SpellEffIndex /*effIndex*/)
     {
         if (Player* player = GetCaster()->ToPlayer())
@@ -1498,7 +1622,7 @@ struct npc_sevis_brightflame_shivarra_gateway : public ScriptedAI
             Unit* summoner = summon->GetSummonerUnit();
             if (!summoner)
                 return;
-
+            // POINT_SEVIS_GATEWAY_SHIVARRA 是我们自己定义的点？并不是Path上的？
             me->GetMotionMaster()->MoveCloserAndStop(POINT_SEVIS_GATEWAY_SHIVARRA, summoner, 2.0f);
 
             task.Schedule(2s, [this](TaskContext task)

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -306,6 +306,8 @@ void WaypointMovementGenerator<Creature>::MovementInform(Creature const* owner) 
     }
 }
 
+// OnArrived 是怎么被调用的？
+// 在DoUpdate(...) 中被调用...
 void WaypointMovementGenerator<Creature>::OnArrived(Creature* owner)
 {
     WaypointPath const* path = GetPath();
@@ -430,6 +432,7 @@ void CreateMergedPath(Unit const* owner, WaypointPath const* path, uint32 previo
 }
 }
 
+// 
 void WaypointMovementGenerator<Creature>::StartMove(Creature* owner, bool relaunch/* = false*/)
 {
     // sanity checks
@@ -482,6 +485,9 @@ void WaypointMovementGenerator<Creature>::StartMove(Creature* owner, bool relaun
             }
             AddFlag(MOVEMENTGENERATOR_FLAG_FINALIZED);
             owner->UpdateCurrentWaypointInfo(0, 0);
+
+            // 这个触发的是到达路径的某一个点，那么这个函数和MovementInform有什么不同？
+            // PathEnd 是在什么时候触发的？ 在所有的point都走完 ... 那么和 WaypointReached 有什么不同呢？
 
             // inform AI
             if (CreatureAI* AI = owner->AI())

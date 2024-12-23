@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of the TrinityCore Project. See AUTHORS file for Copyright information
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -680,6 +680,7 @@ void MotionMaster::MovePoint(uint32 id, float x, float y, float z, bool generate
     Add(new PointMovementGenerator(id, x, y, z, generatePath, speed, finalOrient, nullptr, nullptr, speedSelectionMode, closeEnoughDistance, std::move(scriptResult)));
 }
 
+// 移动到离目的点足够近的地方..
 void MotionMaster::MoveCloserAndStop(uint32 id, Unit* target, float distance)
 {
     float distanceToTravel = _owner->GetExactDist2d(target) - distance;
@@ -699,6 +700,8 @@ void MotionMaster::MoveCloserAndStop(uint32 id, Unit* target, float distance)
             if (Unit const* refreshedTarget = ObjectAccessor::GetUnit(*_owner, target))
                 init.SetFacing(refreshedTarget);
         };
+
+        // 追踪id(pointId)到底是什么
         Add(new GenericMovementGenerator(std::move(initializer), EFFECT_MOTION_TYPE, id));
     }
 }
